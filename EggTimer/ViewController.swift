@@ -1,11 +1,3 @@
-//
-//  ViewController.swift
-//  EggTimer
-//
-//  Created by Angela Yu on 08/07/2019.
-//  Copyright © 2019 The App Brewery. All rights reserved.
-//
-
 import UIKit
 import AVFoundation
 
@@ -19,23 +11,24 @@ final class ViewController: UIViewController {
     private var secondsPassed = 0
     private var timer = Timer()
     private var player: AVAudioPlayer?
-    private var timerFeedback = Timer()
-    private var feedback = UIImpactFeedbackGenerator()
-    private var feedbackCount = 0
-    
-    //MARK: - Outlets:
+    private let feedback = UIImpactFeedbackGenerator(style: .heavy)
+
+        //MARK: - Outlets:
     @IBOutlet weak var mainLabel: UILabel!
     @IBOutlet weak var progressBar: UIProgressView!
-    
-    //MARK: - Actions:
+
+        //MARK: - Actions:
     @IBAction private func hardnessSelected(_ sender: UIButton) {
+        guard let hardness = sender.currentTitle,
+              let time = eggTimes[hardness]
+        else { return }
+
+        totalTime = time
+
         mainLabel.text = "How do you like your eggs?"
         progressBar.progress = 0
         secondsPassed = 0
-        let hardness = sender.currentTitle! // Soft, Medium, Hard
-        
-        totalTime = eggTimes[hardness]!
-        
+
         timer.invalidate() // Invalidate timer and start new timer
         timer = Timer.scheduledTimer(
             timeInterval: 1.0,
@@ -45,26 +38,20 @@ final class ViewController: UIViewController {
             repeats: true
         )
     }
-    
+
     //MARK: - Methods:
     @objc private func updateTimer() {
         if secondsPassed < totalTime{
             secondsPassed +=  1
             progressBar.progress = Float(secondsPassed) / Float(totalTime)
-        }
-        if secondsPassed == totalTime {
+        } else if secondsPassed == totalTime {
             timer.invalidate()
             mainLabel.text = "Done!"
             playSound()
-            timerFeedback = Timer.scheduledTimer(
-                timeInterval: 1.0,
-                target: self,
-                selector: #selector(vibro),
-                userInfo: nil,
-                repeats: true
-            )
+            startFeedback()
         }
     }
+    
     private func playSound() {
         if let url = Bundle.main.url(
             forResource: "alarm_sound",
@@ -73,17 +60,24 @@ final class ViewController: UIViewController {
             player = try? AVAudioPlayer(contentsOf: url)
             player?.play()
         }
+    }
+    
+    private func someFeedback() {
+        feedback.prepare()
+        feedback.impactOccurred(intensity: 0.5)
+        print(feedback)
+    }
+    
+    private func startFeedback() {
+        var vibrationCount = 0
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            if vibrationCount < 4 {
+                self.someFeedback() // Выполнение вибрации
+                vibrationCount += 1
+            } else {
+                timer.invalidate() // Остановить таймер после 4 вибраций
+            }
         }
-    @objc private func vibro() {
-        if feedbackCount < 3 {
-            feedbackCount += 1
-            print(feedback)
-            feedback.prepare()
-            feedback.impactOccurred(intensity: 0.5)
-        } else {
-            feedbackCount = 0
-            timerFeedback.invalidate()
-        }
-        
     }
 }
+
